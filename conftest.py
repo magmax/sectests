@@ -1,6 +1,3 @@
-import os
-import pytest
-
 sec_reports = dict()
 
 
@@ -21,7 +18,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     terminalreporter.ensure_newline()
     global sec_reports
     for name, report in sorted(
-        sec_reports.items(), key=lambda x: x[1].get("code", "").split('.')
+        sec_reports.items(), key=lambda x: x[1].get("code", "").split(".")
     ):
         code = report.get("code", "-----")
         impact = report.get("impact", 0)

@@ -538,3 +538,55 @@ The nosuid mount option specifies that the filesystem cannot contain special dev
 """,
     )
     pytest.skip("Not implemented yet")
+
+
+@pytest.mark.workstation1
+@pytest.mark.server1
+@pytest.mark.cis
+def test_all_removable_media_partitions_with_noexec(record_property, host):
+    record_property("code", "1.1.20")
+    record_property(
+        "title",
+        "CIS 1.1.20: Ensure noexec option set on removable media partitions (Not Scored)",
+    )
+    record_property("impact", 0)
+    record_property(
+        "description",
+        """
+The noexecmount option specifies that the filesystem cannot contain special devices.
+""",
+    )
+    pytest.skip("Not implemented yet")
+
+
+@pytest.mark.workstation1
+@pytest.mark.server1
+@pytest.mark.cis
+@pytest.mark.slow
+def test_sticky_for_world_writable_dirs(record_property, host):
+    record_property("code", "1.1.21")
+    record_property(
+        "title",
+        "CIS 1.1.21: Ensure sticky bit is set on all world-writable directories (Scored)",
+    )
+    record_property("impact", 0)
+    record_property(
+        "description",
+        """
+Setting the sticky bit on world writable directories prevents users from deleting or
+renaming files in that directory that are not owned by them.
+Solution:
+Run the next command:
+df --local -P | awk '{if (NR!=1) print $6}' \\
+  | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null  \\
+  | xargs -I '{}' chmod a+t '{}'
+""",
+    )
+    search = host.run(
+        "df --local --portability "
+        " | awk '{if (NR!=1) print $6}' "
+        " | sort "  # added to increase speed
+        r" | xargs -I '{}' find '{}' -xdev -type d \( -perm -0002 -a ! -perm -1000 \) 2>/dev/null"
+        " | head -n1"  # added to increase speed
+    )
+    assert search == ""

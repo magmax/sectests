@@ -1,24 +1,16 @@
 import pytest
 
 
-def is_mounted(host, path):
-    return host.run(f"mount | grep -E '\\s{path}\\s'").stdout != ""
-
-
 def assert_is_mounted(host, path):
-    assert is_mounted(host, path), f"{path} should be mounted on its own partition"
-
-
-def is_mounted_with_argument(host, path, argument):
-    return host.run(f"mount | grep -E '\\s{path}\\s' | grep -v {argument}").stdout == ""
+    mp = host.mount_point(path)
+    assert mp.exists, f"{path} should be mounted on its own partition"
 
 
 def assert_is_mounted_with_argument(host, path, argument):
-    if not is_mounted(host, path):
+    mp = host.mount_point(path)
+    if not mp.exists:
         pytest.skip(f"{path} has no separated partition")
-    assert is_mounted_with_argument(
-        host, path, argument
-    ), f"{path} should be mounted with `{argument}` option"
+    assert argument in mp.options, f"{path} should be mounted with `{argument}` option"
 
 
 @pytest.mark.workstation1
@@ -569,7 +561,7 @@ def test_sticky_for_world_writable_dirs(record_property, host):
         "title",
         "CIS 1.1.21: Ensure sticky bit is set on all world-writable directories (Scored)",
     )
-    record_property("impact", 0)
+    record_property("impact", 1.0)
     record_property(
         "description",
         """
@@ -589,4 +581,56 @@ df --local -P | awk '{if (NR!=1) print $6}' \\
         r" | xargs -I '{}' find '{}' -xdev -type d \( -perm -0002 -a ! -perm -1000 \) 2>/dev/null"
         " | head -n1"  # added to increase speed
     )
-    assert search == ""
+    assert (
+        search.stdout == ""
+    ), "sticky bit for all world-writable directories should be set."
+
+
+@pytest.mark.server1
+@pytest.mark.workstation2
+@pytest.mark.cis
+def test_disable_automounting(record_property, host):
+    record_property("code", "1.1.22")
+    record_property(
+        "title",
+        "CIS 1.1.22: Disable Automounting (Scored)",
+    )
+    record_property("impact", 1.0)
+    record_property(
+        "description",
+        """
+autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives.
+Solution:
+Any command of:
+# chkconfig autofs off
+# systemctl disable autofs
+# update-rc.d autofs disable
+""",
+    )
+    autofs = host.service("autofs")
+    assert (
+        not autofs.is_running and not autofs.is_enabled
+    ), "autofs should not be installed"
+
+
+@pytest.mark.server1
+@pytest.mark.workstation2
+@pytest.mark.cis
+def test_disable_usb_storage(record_property, host):
+    record_property("code", "1.1.23")
+    record_property(
+        "title",
+        "CIS 1.1.23: Disable USB Storage(Scored)",
+    )
+    record_property("impact", 1.0)
+    record_property(
+        "description",
+        """
+USB popularity and utility has led to USB-based malware being a simple and
+common means for network infiltration and a first step to establishing a
+persistent threat within a networked environment.
+""",
+    )
+    assert (
+        "" == host.run("lsmod | grep usb-storage").stdout
+    ), "usb-storage module should not be enabled."
